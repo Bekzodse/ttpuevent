@@ -1,0 +1,225 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-primary: #4f46e5;
+  --brand-secondary: #7c3aed;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased transition-colors duration-200;
+  }
+
+  html.dark body {
+    background-color: #0b1120;
+    color: #e2e8f0;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply btn text-white shadow-sm;
+    background-color: var(--brand-primary);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-outline {
+    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white shadow-sm hover:bg-rose-700 focus:ring-rose-500/40;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-100 disabled:text-slate-500;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+  .card {
+    @apply rounded-2xl border border-slate-200/70 bg-white shadow-card;
+  }
+  .brand-gradient {
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  }
+}
+
+/* Dark mode overrides so all views stay high-contrast and consistent */
+html.dark header {
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  border-color: #1e293b !important;
+}
+
+html.dark footer {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+html.dark .card {
+  background-color: #111827 !important;
+  border-color: #1f2937 !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+html.dark .input,
+html.dark select.input,
+html.dark textarea.input {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .input:disabled {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .label {
+  color: #cbd5e1 !important;
+}
+
+html.dark .btn-outline {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .btn-outline:hover:not(:disabled) {
+  background-color: #334155 !important;
+}
+
+html.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/50 {
+  background-color: #1e293b !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+html.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/80 {
+  border-color: #1f2937 !important;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1f2937 !important;
+}
+
+html.dark tr:hover {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #1e293b !important;
+}
+
+/* Calendar slot states: tuned for calm light mode and crisp html.dark mode */
+.cal-slot-available {
+  background-color: rgba(16, 185, 129, 0.055);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  color: #065f46;
+}
+.cal-slot-available:hover {
+  background-color: rgba(16, 185, 129, 0.13);
+  border-color: rgba(16, 185, 129, 0.45);
+}
+html.dark .cal-slot-available {
+  background-color: rgba(16, 185, 129, 0.10);
+  border-color: rgba(52, 211, 153, 0.24);
+  color: #6ee7b7;
+}
+html.dark .cal-slot-available:hover {
+  background-color: rgba(16, 185, 129, 0.20);
+  border-color: rgba(52, 211, 153, 0.48);
+}
+
+.cal-slot-reserved {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #f59e0b;
+  color: #78350f;
+}
+.cal-slot-reserved:hover {
+  background-color: #fef3c7;
+}
+html.dark .cal-slot-reserved {
+  background-color: rgba(245, 158, 11, 0.14);
+  border-color: rgba(251, 191, 36, 0.30);
+  border-left: 3px solid #fbbf24;
+  color: #fde68a;
+}
+html.dark .cal-slot-reserved:hover {
+  background-color: rgba(245, 158, 11, 0.22);
+}
+
+.cal-slot-confirmed {
+  background-color: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-left: 3px solid #e11d48;
+  color: #881337;
+}
+.cal-slot-confirmed:hover {
+  background-color: #ffe4e6;
+}
+html.dark .cal-slot-confirmed {
+  background-color: rgba(244, 63, 94, 0.14);
+  border-color: rgba(251, 113, 133, 0.32);
+  border-left: 3px solid #fb7185;
+  color: #fecdd3;
+}
+html.dark .cal-slot-confirmed:hover {
+  background-color: rgba(244, 63, 94, 0.22);
+}
+
+.cal-slot-blocked {
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-left: 3px solid #64748b;
+  color: #334155;
+}
+.cal-slot-blocked:hover {
+  background-color: #e2e8f0;
+}
+html.dark .cal-slot-blocked {
+  background-color: rgba(100, 116, 139, 0.20);
+  border-color: rgba(148, 163, 184, 0.30);
+  border-left: 3px solid #94a3b8;
+  color: #cbd5e1;
+}
+html.dark .cal-slot-blocked:hover {
+  background-color: rgba(100, 116, 139, 0.30);
+}
