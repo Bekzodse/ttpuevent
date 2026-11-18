@@ -55,6 +55,7 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Admin")
                     .phoneNumber("+998901000001")
                     .username("Bekzod")
+                    .email("bekzod.admin@turin.uz")
                     .password(passwordEncoder.encode("Bekzodse"))
                     .role(Role.ADMIN)
                     .department("University Administration")
@@ -69,6 +70,7 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Yusupova")
                     .phoneNumber("+998901234567")
                     .username("malika")
+                    .email("malika.yusupova@turin.uz")
                     .password(passwordEncoder.encode("Student123!"))
                     .role(Role.USER)
                     .department("Computer Science")
@@ -83,6 +85,7 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Toshmatov")
                     .phoneNumber("+998902345678")
                     .username("jasur")
+                    .email("jasur.toshmatov@turin.uz")
                     .password(passwordEncoder.encode("Student123!"))
                     .role(Role.USER)
                     .department("Software Engineering")
@@ -97,6 +100,7 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Karimova")
                     .phoneNumber("+998903456789")
                     .username("dilnoza")
+                    .email("dilnoza.karimova@turin.uz")
                     .password(passwordEncoder.encode("Student123!"))
                     .role(Role.USER)
                     .department("Economics & Management")
@@ -133,7 +137,67 @@ public class DataInitializer implements CommandLineRunner {
                 })
         );
 
-        if (eventRepository.count() == 0) {
+        long existingEvents = eventRepository.count();
+        if (existingEvents == 0 || (existingEvents <= 2 && !eventRepository.existsByTitleIgnoreCase("Hackathon 2026: Smart Campus"))) {
+            if (!eventRepository.existsByTitleIgnoreCase("International Students' Day 2026")) {
+                eventRepository.save(UniversityEvent.builder()
+                        .title("International Students' Day 2026")
+                        .description("""
+                                🇺🇿 17-noyabr – Xalqaro Talabalar kuni munosabati bilan universitetimizda ajoyib tadbir o'tkazamiz!
+                                • Eng faol va iste'dodli talabalarni taqdirlash marosimi
+                                • Bepul choy va qahva
+                                • 16:00 – Conference Hall'da taqdirlash marosimi, 18:00 – ochiq havoda gulxan!
+
+                                🇷🇺 17 ноября, в честь Международного дня студентов, мы проводим в университете яркое мероприятие!
+                                • Церемония награждения самых активных и талантливых студентов
+                                • Бесплатные чай и кофе
+                                • 16:00 – мероприятие в Conference Hall, 18:00 – костёр на открытом воздухе!
+
+                                🇬🇧 On November 17, for International Students' Day, we're hosting a special event at our university!
+                                • Awards ceremony for the most active and talented students
+                                • Free tea and coffee & bonfire outdoors
+                                • 4:00 PM – Event in the Conference Hall, 6:00 PM – Bonfire""")
+                        .category("Cultural")
+                        .eventDate(LocalDate.of(2026, 11, 17))
+                        .eventTime("16:00")
+                        .location("The Annual Conference Hall & Campus Courtyard")
+                        .organizer("Students' Union")
+                        .capacity(250)
+                        .registeredCount(0)
+                        .gradient("from-sky-500 to-blue-600")
+                        .status("Upcoming")
+                        .imageUrl("/events/students-day-2026.jpg")
+                        .published(true)
+                        .build());
+            }
+            if (!eventRepository.existsByTitleIgnoreCase("Hiking to Sokok")) {
+                eventRepository.save(UniversityEvent.builder()
+                        .title("Hiking to Sokok")
+                        .description("""
+                                🇺🇿 Tog'lar, toza havo, sharshara shovqini va shahar shovqinidan yiroqda unutilmas kun!
+                                🗓 Yakshanba, 22-noyabr | ⏰ Jo'nash: 06:00 (Alisher Navoi, Panorama) | 🌙 Qaytish: 18:30 | 💰 Narxi: 185,000 UZS
+                                • Tog' haykingi va cho'qqilarni zabt etish • Sirli g'or • Go'zal sharshara • Qizil o'rmon • Professional fotograf • Piknik va o'yinlar • Qulay transport
+
+                                🇷🇺 Представь: горы, свежий воздух, шум водопада и целый день вдали от городской суеты… Поход в Сокок ждёт тебя!
+                                🗓 Воскресенье, 22 ноября | ⏰ Выезд: 06:00 (Alisher Navoi, Panorama) | 🌙 Возвращение: 18:30 | 💰 Стоимость: 185,000 UZS
+                                • Горный хайкинг и покорение вершин • Таинственная пещера • Живописный водопад • Красный лес • Профессиональный фотограф • Пикник и игры • Комфортный транспорт
+
+                                🇬🇧 Mountains, fresh air, waterfall sounds, and a full day away from city rush — Hiking to Sokok awaits!
+                                🗓 Sunday, November 22 | ⏰ Departure: 06:00 AM (Alisher Navoi, Panorama) | 🌙 Return: 18:30 | 💰 Price: 185,000 UZS
+                                • Mountain hiking & summit trek • Mysterious cave • Scenic waterfall • Red autumn forest • Professional photographer • Picnic & games • Comfortable transport""")
+                        .category("Sports")
+                        .eventDate(LocalDate.of(2026, 11, 22))
+                        .eventTime("06:00")
+                        .location("Sokok Mountains (Alisher Navoi, Panorama)")
+                        .organizer("JM Events")
+                        .capacity(40)
+                        .registeredCount(0)
+                        .gradient("from-orange-500 to-red-500")
+                        .status("Upcoming")
+                        .imageUrl("/events/hiking-to-sokok.jpg")
+                        .published(true)
+                        .build());
+            }
             eventRepository.saveAll(List.of(
                     UniversityEvent.builder()
                             .title("Hackathon 2026: Smart Campus")

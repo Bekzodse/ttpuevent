@@ -46,6 +46,9 @@ public class HallApplication {
     @Column(name = "applicant_phone_number", nullable = false, length = 20)
     private String applicantPhoneNumber;
 
+    @Column(name = "applicant_email", length = 160)
+    private String applicantEmail;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "hall_id", nullable = false)
     private EventHall hall;

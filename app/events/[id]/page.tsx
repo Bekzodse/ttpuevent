@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useI18n } from "@/components/I18nProvider";
-import { ApiError, eventsApi } from "@/lib/api";
+import { ApiError, eventsApi, resolveEventImageUrl } from "@/lib/api";
 import { UniversityEvent } from "@/lib/types";
 
 export default function EventDetailPage() {
@@ -56,7 +56,12 @@ export default function EventDetailPage() {
 
   const left = Math.max(0, event.capacity - event.registered);
   const percent = Math.min(100, Math.round((event.registered / event.capacity) * 100));
-  const closed = event.status === "Completed" || left <= 0;
+  const closed =
+    event.status === "Completed" ||
+    event.status === "Cancelled" ||
+    event.published === false ||
+    left <= 0;
+  const imgSrc = resolveEventImageUrl(event.imageUrl);
 
   const categoryLabel =
     event.category === "Academic"
@@ -102,17 +107,37 @@ export default function EventDetailPage() {
       </Link>
 
       <div className="card overflow-hidden">
-        <div className={`h-48 bg-gradient-to-br ${event.gradient} p-6 sm:h-56`}>
-          <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-700">
-            {categoryLabel}
-          </span>
+        <div className={`relative h-48 overflow-hidden bg-gradient-to-br ${event.gradient} p-6 sm:h-60`}>
+          {imgSrc && (
+            <img
+              src={imgSrc}
+              alt={event.title}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
+          <div className="relative z-10 flex items-center justify-between gap-2">
+            <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+              {categoryLabel}
+            </span>
+            {event.status !== "Upcoming" && (
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold text-white shadow-sm ${
+                  event.status === "Cancelled" ? "bg-rose-600/90" : "bg-slate-900/75"
+                }`}
+              >
+                {event.status}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <h1 className="text-3xl font-extrabold text-slate-900">{event.title}</h1>
             <h2 className="mt-6 text-lg font-bold text-slate-900">{t.events.aboutEvent}</h2>
-            <p className="mt-2 leading-relaxed text-slate-600">{event.description}</p>
+            <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-600">
+              {event.description}
+            </p>
           </div>
 
           <aside className="space-y-5 rounded-2xl bg-slate-50 p-5">
@@ -171,7 +196,9 @@ export default function EventDetailPage() {
               >
                 <Ticket size={18} />
                 {closed
-                  ? event.status === "Completed"
+                  ? event.status === "Cancelled"
+                    ? "Event Cancelled"
+                    : event.status === "Completed"
                     ? t.events.eventEnded
                     : t.events.noSeatsLeft
                   : user

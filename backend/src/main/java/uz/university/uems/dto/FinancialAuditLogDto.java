@@ -1,5 +1,6 @@
 package uz.university.uems.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Financial transaction and refund audit log entry")
 public class FinancialAuditLogDto {
     private Long id;
     private Long applicationId;

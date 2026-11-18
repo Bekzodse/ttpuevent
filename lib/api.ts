@@ -1,4 +1,6 @@
 import {
+  AdminActivityLog,
+  AdminAnalytics,
   AdminStats,
   ApiErrorPayload,
   ApplicationStats,
@@ -13,6 +15,7 @@ import {
   EquipmentHistoryItem,
   EquipmentReservation,
   EventHall,
+  EventRegistrant,
   FinancialAuditLog,
   HallApplication,
   HallScheduleBlock,
@@ -24,6 +27,7 @@ import {
   UniversityBranding,
   UniversityEvent,
   User,
+  UserApplicationHistory,
 } from "./types";
 
 export const API_BASE_URL =
@@ -80,6 +84,13 @@ export function resolveAvatarUrl(path: string | null | undefined): string | null
   if (!path) return null;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+export function resolveEventImageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path.startsWith("/api/")) return `${API_BASE_URL}${path}`;
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 async function request<T>(
@@ -174,6 +185,7 @@ export const authApi = {
     username: string;
     password: string;
     department?: string;
+    email?: string;
   }) =>
     request<AuthResponse>("/api/auth/register", {
       method: "POST",
@@ -192,6 +204,7 @@ export const userApi = {
     phoneNumber: string;
     department?: string;
     bio?: string;
+    email?: string;
   }) =>
     request<User>(
       "/api/users/me",
@@ -559,6 +572,9 @@ export const adminApplicationsApi = {
     hallId?: string;
     eventType?: string;
     eventDate?: string;
+    submittedDate?: string;
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
     page?: number;
     size?: number;
   }) => {
@@ -568,6 +584,9 @@ export const adminApplicationsApi = {
     if (params.hallId) qs.set("hallId", params.hallId);
     if (params.eventType) qs.set("eventType", params.eventType);
     if (params.eventDate) qs.set("eventDate", params.eventDate);
+    if (params.submittedDate) qs.set("submittedDate", params.submittedDate);
+    if (params.sortBy) qs.set("sortBy", params.sortBy);
+    if (params.sortDir) qs.set("sortDir", params.sortDir);
     qs.set("page", String(params.page ?? 0));
     qs.set("size", String(params.size ?? 15));
     return request<PageResponse<HallApplication>>(
@@ -629,6 +648,19 @@ export const adminApplicationsApi = {
       },
       true
     ),
+
+  changeStatus: (id: number, status: BookingStatus, comment?: string) =>
+    request<HallApplication>(
+      `/api/admin/applications/${id}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status, comment: comment || "" }),
+      },
+      true
+    ),
+
+  delete: (id: number) =>
+    request<{ message: string }>(`/api/admin/applications/${id}`, { method: "DELETE" }, true),
 };
 
 export const notificationsApi = {
@@ -643,6 +675,28 @@ export const notificationsApi = {
 
 export const adminApi = {
   getStats: () => request<AdminStats>("/api/admin/stats", { method: "GET" }, true),
+
+  getAnalytics: () => request<AdminAnalytics>("/api/admin/analytics", { method: "GET" }, true),
+
+  getActivityLogs: (params: {
+    search?: string;
+    actionType?: string;
+    targetType?: string;
+    page?: number;
+    size?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params.search) qs.set("search", params.search);
+    if (params.actionType) qs.set("actionType", params.actionType);
+    if (params.targetType) qs.set("targetType", params.targetType);
+    qs.set("page", String(params.page ?? 0));
+    qs.set("size", String(params.size ?? 25));
+    return request<PageResponse<AdminActivityLog>>(
+      `/api/admin/activity-logs?${qs.toString()}`,
+      { method: "GET" },
+      true
+    );
+  },
 
   listUsers: (params: {
     search?: string;
@@ -668,6 +722,9 @@ export const adminApi = {
 
   getUser: (id: number) => request<User>(`/api/admin/users/${id}`, { method: "GET" }, true),
 
+  getUserApplications: (id: number) =>
+    request<UserApplicationHistory>(`/api/admin/users/${id}/applications`, { method: "GET" }, true),
+
   updateUser: (
     id: number,
     data: {
@@ -675,6 +732,7 @@ export const adminApi = {
       lastName: string;
       phoneNumber: string;
       username: string;
+      email?: string;
       role: Role;
       active: boolean;
       department?: string;
@@ -712,6 +770,124 @@ export const adminApi = {
 
   getUserLoginHistory: (id: number) =>
     request<LoginActivity[]>(`/api/admin/users/${id}/login-history`, { method: "GET" }, true),
+};
+
+export const adminEventsApi = {
+  list: (params: {
+    search?: string;
+    category?: string;
+    status?: string;
+    published?: "" | "true" | "false";
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
+    page?: number;
+    size?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params.search) qs.set("search", params.search);
+    if (params.category) qs.set("category", params.category);
+    if (params.status) qs.set("status", params.status);
+    if (params.published) qs.set("published", params.published);
+    if (params.sortBy) qs.set("sortBy", params.sortBy);
+    if (params.sortDir) qs.set("sortDir", params.sortDir);
+    qs.set("page", String(params.page ?? 0));
+    qs.set("size", String(params.size ?? 15));
+    return request<PageResponse<UniversityEvent>>(
+      `/api/admin/events?${qs.toString()}`,
+      { method: "GET" },
+      true
+    );
+  },
+
+  get: (id: number) => request<UniversityEvent>(`/api/admin/events/${id}`, { method: "GET" }, true),
+
+  create: (data: {
+    title: string;
+    description: string;
+    category: string;
+    date: string;
+    time: string;
+    location: string;
+    organizer: string;
+    capacity: number;
+    imageUrl?: string;
+    status?: string;
+    published?: boolean;
+  }) =>
+    request<UniversityEvent>(
+      "/api/admin/events",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      true
+    ),
+
+  update: (
+    id: number,
+    data: {
+      title: string;
+      description: string;
+      category: string;
+      date: string;
+      time: string;
+      location: string;
+      organizer: string;
+      capacity: number;
+      imageUrl?: string;
+      status?: string;
+      published?: boolean;
+    }
+  ) =>
+    request<UniversityEvent>(
+      `/api/admin/events/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+      true
+    ),
+
+  uploadImage: (id: number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<UniversityEvent>(
+      `/api/admin/events/${id}/image`,
+      {
+        method: "POST",
+        body: formData,
+      },
+      true
+    );
+  },
+
+  deleteImage: (id: number) =>
+    request<UniversityEvent>(`/api/admin/events/${id}/image`, { method: "DELETE" }, true),
+
+  publish: (id: number) =>
+    request<UniversityEvent>(`/api/admin/events/${id}/publish`, { method: "PATCH" }, true),
+
+  unpublish: (id: number) =>
+    request<UniversityEvent>(`/api/admin/events/${id}/unpublish`, { method: "PATCH" }, true),
+
+  cancel: (id: number) =>
+    request<UniversityEvent>(`/api/admin/events/${id}/cancel`, { method: "PATCH" }, true),
+
+  updateStatus: (id: number, status: string, published?: boolean) =>
+    request<UniversityEvent>(
+      `/api/admin/events/${id}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status, published }),
+      },
+      true
+    ),
+
+  delete: (id: number) =>
+    request<{ message: string }>(`/api/admin/events/${id}`, { method: "DELETE" }, true),
+
+  getRegistrations: (id: number) =>
+    request<EventRegistrant[]>(`/api/admin/events/${id}/registrations`, { method: "GET" }, true),
 };
 
 export const eventsApi = {

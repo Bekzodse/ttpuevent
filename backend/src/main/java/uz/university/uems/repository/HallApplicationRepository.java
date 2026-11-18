@@ -21,6 +21,9 @@ public interface HallApplicationRepository
     List<HallApplication> findByApplicantIdOrderByCreatedAtDesc(Long applicantId);
 
     @EntityGraph(attributePaths = {"hall", "applicant"})
+    List<HallApplication> findAllByOrderByCreatedAtDesc();
+
+    @EntityGraph(attributePaths = {"hall", "applicant"})
     Optional<HallApplication> findWithDetailsById(Long id);
 
     boolean existsByApplicationCode(String applicationCode);

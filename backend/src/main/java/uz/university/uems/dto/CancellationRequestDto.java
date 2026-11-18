@@ -1,5 +1,6 @@
 package uz.university.uems.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Booking cancellation and refund tracking record")
 public class CancellationRequestDto {
     private Long id;
     private Long applicationId;

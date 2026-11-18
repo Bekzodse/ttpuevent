@@ -1,5 +1,6 @@
 package uz.university.uems.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Calendar booking or schedule block entry")
 public class CalendarEventDto {
     private Long id;
     private String itemType; // BOOKING or SCHEDULE_BLOCK

@@ -1,5 +1,6 @@
 package uz.university.uems.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "University event hall metadata and pricing")
 public class EventHallDto {
     private Long id;
     private String name;

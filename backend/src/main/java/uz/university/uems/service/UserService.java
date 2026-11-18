@@ -40,6 +40,9 @@ public class UserService {
         user.setFirstName(InputNormalizer.normalizeName(request.getFirstName()));
         user.setLastName(InputNormalizer.normalizeName(request.getLastName()));
         user.setPhoneNumber(phone);
+        if (request.getEmail() != null) {
+            user.setEmail(!request.getEmail().isBlank() ? request.getEmail().trim().toLowerCase() : null);
+        }
         user.setDepartment(request.getDepartment() != null && !request.getDepartment().isBlank()
                 ? request.getDepartment().trim()
                 : null);

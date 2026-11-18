@@ -17,6 +17,9 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     @EntityGraph(attributePaths = {"event"})
     List<EventRegistration> findByUserIdOrderByRegisteredAtDesc(Long userId);
 
+    @EntityGraph(attributePaths = {"user"})
+    List<EventRegistration> findByEventIdOrderByRegisteredAtDesc(Long eventId);
+
     @EntityGraph(attributePaths = {"user", "event"})
     List<EventRegistration> findTop10ByOrderByRegisteredAtDesc();
 

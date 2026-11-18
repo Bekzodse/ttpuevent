@@ -29,6 +29,7 @@ export default function RegisterPage() {
     lastName: "",
     phoneNumber: "",
     username: "",
+    email: "",
     password: "",
     confirmPassword: "",
   });
@@ -77,6 +78,7 @@ export default function RegisterPage() {
         lastName: form.lastName.trim(),
         phoneNumber: form.phoneNumber.trim(),
         username: form.username.trim(),
+        email: form.email.trim() || undefined,
         password: form.password,
       });
       router.push("/dashboard");
@@ -201,6 +203,23 @@ export default function RegisterPage() {
                 <p className="mt-1 text-xs font-medium text-rose-600">{fieldErrors.username}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="label" htmlFor="reg-email">
+              Email <span className="text-xs font-normal text-slate-400">{t.auth.optional}</span>
+            </label>
+            <input
+              id="reg-email"
+              type="email"
+              className={`input ${fieldErrors.email ? "border-rose-400" : ""}`}
+              placeholder="student@turin.uz"
+              value={form.email}
+              onChange={(e) => setField("email", e.target.value)}
+            />
+            {fieldErrors.email && (
+              <p className="mt-1 text-xs font-medium text-rose-600">{fieldErrors.email}</p>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

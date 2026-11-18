@@ -1,5 +1,6 @@
 package uz.university.uems.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +12,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Hourly time-slot availability status for a hall on a specific date")
 public class TimeSlotAvailabilityDto {
     private LocalTime startTime;
     private LocalTime endTime;

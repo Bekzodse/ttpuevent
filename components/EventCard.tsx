@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { useI18n } from "@/components/I18nProvider";
+import { resolveEventImageUrl } from "@/lib/api";
 import { UniversityEvent } from "@/lib/types";
 
 export default function EventCard({ event }: { event: UniversityEvent }) {
   const { t } = useI18n();
   const percent = Math.round((event.registered / event.capacity) * 100);
   const full = event.registered >= event.capacity;
+  const imgSrc = resolveEventImageUrl(event.imageUrl);
 
   const categoryLabel =
     event.category === "Academic"
@@ -30,13 +32,24 @@ export default function EventCard({ event }: { event: UniversityEvent }) {
       href={`/events/${event.id}`}
       className="card group flex flex-col overflow-hidden transition hover:-translate-y-1"
     >
-      <div className={`relative h-32 bg-gradient-to-br ${event.gradient}`}>
-        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700">
+      <div className={`relative h-36 overflow-hidden bg-gradient-to-br ${event.gradient}`}>
+        {imgSrc && (
+          <img
+            src={imgSrc}
+            alt={event.title}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        )}
+        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
           {categoryLabel}
         </span>
-        {event.status === "Completed" && (
-          <span className="absolute right-3 top-3 rounded-full bg-slate-900/75 px-2.5 py-1 text-xs font-semibold text-white">
-            {t.events.completed}
+        {(event.status === "Completed" || event.status === "Cancelled") && (
+          <span
+            className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm ${
+              event.status === "Cancelled" ? "bg-rose-600/90" : "bg-slate-900/75"
+            }`}
+          >
+            {event.status === "Cancelled" ? "Cancelled" : t.events.completed}
           </span>
         )}
         {event.userRegistered && (

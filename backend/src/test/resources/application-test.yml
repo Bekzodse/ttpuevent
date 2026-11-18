@@ -15,5 +15,6 @@ app:
     avatar-dir: ./target/test-uploads/avatars
     receipt-dir: ./target/test-uploads/receipts
     branding-dir: ./target/test-uploads/branding
+    event-dir: ./target/test-uploads/events
   seed:
     enabled: false

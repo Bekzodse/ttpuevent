@@ -53,6 +53,7 @@ export default function PersonalCabinetPage() {
     firstName: "",
     lastName: "",
     phoneNumber: "",
+    email: "",
     bio: "",
   });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -96,6 +97,7 @@ export default function PersonalCabinetPage() {
         firstName: user.firstName,
         lastName: user.lastName,
         phoneNumber: user.phoneNumber,
+        email: user.email || "",
         bio: user.bio || "",
       });
       eventsApi
@@ -146,6 +148,7 @@ export default function PersonalCabinetPage() {
         firstName: profileForm.firstName.trim(),
         lastName: profileForm.lastName.trim(),
         phoneNumber: profileForm.phoneNumber.trim(),
+        email: profileForm.email.trim() || undefined,
         bio: profileForm.bio.trim(),
       });
       updateUserState(updated);
@@ -531,6 +534,28 @@ export default function PersonalCabinetPage() {
                   </div>
                   {profileFieldErrors.phoneNumber && (
                     <p className="mt-1 text-xs text-rose-600">{profileFieldErrors.phoneNumber}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="cab-email">
+                    Email
+                  </label>
+                  <input
+                    id="cab-email"
+                    type="email"
+                    className={`input ${
+                      profileFieldErrors.email ? "border-rose-400" : ""
+                    }`}
+                    placeholder="student@turin.uz"
+                    value={profileForm.email}
+                    onChange={(e) => {
+                      setProfileForm((p) => ({ ...p, email: e.target.value }));
+                      setProfileFieldErrors((p) => ({ ...p, email: "" }));
+                    }}
+                  />
+                  {profileFieldErrors.email && (
+                    <p className="mt-1 text-xs text-rose-600">{profileFieldErrors.email}</p>
                   )}
                 </div>
 

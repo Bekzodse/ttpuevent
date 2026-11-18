@@ -41,18 +41,22 @@ public class FileStorageService {
     private final Path avatarUploadDir;
     private final Path receiptUploadDir;
     private final Path brandingUploadDir;
+    private final Path eventUploadDir;
 
     public FileStorageService(
             @Value("${app.upload.avatar-dir}") String avatarDir,
             @Value("${app.upload.receipt-dir:./uploads/receipts}") String receiptDir,
-            @Value("${app.upload.branding-dir:./uploads/branding}") String brandingDir) {
+            @Value("${app.upload.branding-dir:./uploads/branding}") String brandingDir,
+            @Value("${app.upload.event-dir:./uploads/events}") String eventDir) {
         this.avatarUploadDir = Paths.get(avatarDir).toAbsolutePath().normalize();
         this.receiptUploadDir = Paths.get(receiptDir).toAbsolutePath().normalize();
         this.brandingUploadDir = Paths.get(brandingDir).toAbsolutePath().normalize();
+        this.eventUploadDir = Paths.get(eventDir).toAbsolutePath().normalize();
         try {
             Files.createDirectories(this.avatarUploadDir);
             Files.createDirectories(this.receiptUploadDir);
             Files.createDirectories(this.brandingUploadDir);
+            Files.createDirectories(this.eventUploadDir);
         } catch (IOException ex) {
             throw new FileStorageException("Could not initialize file storage directories.", ex);
         }
@@ -73,6 +77,11 @@ public class FileStorageService {
                 "Unsupported receipt format. Please upload a PNG, JPG, WEBP, GIF image, or PDF document.");
     }
 
+    public String storeEventImage(MultipartFile file) {
+        return storeFile(file, eventUploadDir, ALLOWED_IMAGE_TYPES,
+                "Unsupported event image format. Please upload a PNG, JPG, WEBP, or GIF image.");
+    }
+
     public Resource loadAvatar(String filename) {
         return loadFromDir(filename, avatarUploadDir, "Profile picture not found.");
     }
@@ -85,6 +94,10 @@ public class FileStorageService {
         return loadFromDir(filename, receiptUploadDir, "Payment receipt not found.");
     }
 
+    public Resource loadEventImage(String filename) {
+        return loadFromDir(filename, eventUploadDir, "Event image not found.");
+    }
+
     public void deleteAvatar(String filename) {
         deleteFromDir(filename, avatarUploadDir);
     }
@@ -95,6 +108,10 @@ public class FileStorageService {
 
     public void deleteReceipt(String filename) {
         deleteFromDir(filename, receiptUploadDir);
+    }
+
+    public void deleteEventImage(String filename) {
+        deleteFromDir(filename, eventUploadDir);
     }
 
     private String storeFile(

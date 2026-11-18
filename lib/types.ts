@@ -31,6 +31,7 @@ export interface User {
   lastName: string;
   phoneNumber: string;
   username: string;
+  email?: string | null;
   role: Role;
   profilePictureUrl: string | null;
   department: string | null;
@@ -59,7 +60,13 @@ export interface AdminStats {
   totalAdmins: number;
   totalRegularUsers: number;
   totalEvents: number;
+  upcomingEvents?: number;
+  completedEvents?: number;
   totalEventRegistrations: number;
+  totalApplications?: number;
+  pendingApplications?: number;
+  approvedApplications?: number;
+  rejectedApplications?: number;
 }
 
 export interface PageResponse<T> {
@@ -98,6 +105,9 @@ export interface UniversityEvent {
   registered: number;
   gradient: string;
   status: string;
+  imageUrl?: string | null;
+  published?: boolean;
+  createdAt?: string;
   userRegistered: boolean;
 }
 
@@ -228,6 +238,7 @@ export interface HallApplication {
   applicantFirstName: string;
   applicantLastName: string;
   applicantPhoneNumber: string;
+  applicantEmail?: string | null;
   hall: EventHall;
   eventName: string;
   eventType: string;
@@ -348,4 +359,118 @@ export interface ApiErrorPayload {
   message: string;
   path?: string;
   fieldErrors?: Record<string, string>;
+}
+
+export interface AdminActivityLog {
+  id: number;
+  actorId: number | null;
+  actorUsername: string;
+  actorFullName: string;
+  actionType: string;
+  targetType: string;
+  targetId: number | null;
+  targetLabel: string | null;
+  details: string | null;
+  createdAt: string;
+}
+
+export interface EventRegistrant {
+  registrationId: number;
+  userId: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phoneNumber: string;
+  department: string | null;
+  registeredAt: string;
+}
+
+export interface UserApplicationHistory {
+  user: User;
+  hallApplications: HallApplication[];
+  eventRegistrations: {
+    registrationId: number;
+    event: UniversityEvent;
+    registeredAt: string;
+  }[];
+}
+
+export interface AdminAnalytics {
+  totalEvents: number;
+  upcomingEvents: number;
+  completedEvents: number;
+  cancelledEvents: number;
+  draftEvents: number;
+  publishedEvents: number;
+
+  totalUsers: number;
+  activeAccounts: number;
+  inactiveAccounts: number;
+  currentlyActiveUsers: number;
+  usersWhoLoggedIn: number;
+  totalAdmins: number;
+  totalRegularUsers: number;
+
+  totalApplications: number;
+  pendingApplications: number;
+  approvedApplications: number;
+  rejectedApplications: number;
+  cancelledApplications: number;
+  expiredApplications: number;
+  confirmedApplications: number;
+
+  totalEventRegistrations: number;
+  totalEventCapacity: number;
+  eventFillRatePercent: number;
+
+  approvalRatePercent: number;
+  rejectionRatePercent: number;
+  cancellationRatePercent: number;
+  totalConfirmedRevenue: number;
+
+  applicationStatusBreakdown: {
+    status: string;
+    label: string;
+    count: number;
+  }[];
+
+  monthlyApplicationTrends: {
+    month: string;
+    label: string;
+    total: number;
+    approved: number;
+    rejected: number;
+    pending: number;
+    cancelled: number;
+  }[];
+
+  eventParticipationByCategory: {
+    category: string;
+    eventCount: number;
+    totalCapacity: number;
+    totalRegistered: number;
+    fillRatePercent: number;
+  }[];
+
+  popularEvents: {
+    id: number;
+    title: string;
+    category: string;
+    date: string;
+    location: string;
+    capacity: number;
+    registered: number;
+    fillRatePercent: number;
+    status: string;
+    published: boolean;
+  }[];
+
+  hallUtilization: {
+    hallId: number;
+    hallName: string;
+    totalApplications: number;
+    confirmedCount: number;
+    confirmedRevenue: number;
+  }[];
 }

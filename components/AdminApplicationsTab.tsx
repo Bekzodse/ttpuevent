@@ -10,15 +10,18 @@ import {
   Eye,
   FileCheck2,
   History,
+  Mail,
   MessageSquare,
   Search,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   X,
 } from "lucide-react";
 import BookingStatusBadge from "./BookingStatusBadge";
 import SecureReceiptViewer from "./SecureReceiptViewer";
 import { useNotifications } from "./NotificationProvider";
+import ConfirmDialog from "./admin/ConfirmDialog";
 import { adminApplicationsApi, ApiError, applicationsApi, equipmentApi, hallsApi } from "@/lib/api";
 import { ApplicationStats, BookingStatus, EventHall, HallApplication } from "@/lib/types";
 
@@ -34,6 +37,15 @@ const ALL_STATUSES: BookingStatus[] = [
   "CONFIRMED",
   "CANCELLED",
   "EXPIRED",
+];
+
+const DIRECT_STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
+  { value: "PENDING", label: "Pending" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "CONFIRMED", label: "Confirmed" },
+  { value: "UNDER_REVIEW", label: "Under Review" },
 ];
 
 const EVENT_TYPES = [
@@ -61,8 +73,10 @@ function formatDate(iso: string | null) {
 
 export default function AdminApplicationsTab({
   onBanner,
+  refreshTick = 0,
 }: {
   onBanner: (b: { type: "ok" | "err"; text: string }) => void;
+  refreshTick?: number;
 }) {
   const { lastEventTick } = useNotifications();
 
@@ -79,6 +93,9 @@ export default function AdminApplicationsTab({
   const [hallFilter, setHallFilter] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [submittedDateFilter, setSubmittedDateFilter] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [selected, setSelected] = useState<HallApplication | null>(null);
   const [actionType, setActionType] = useState<
@@ -87,6 +104,14 @@ export default function AdminApplicationsTab({
   const [comment, setComment] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Direct status override state inside modal
+  const [directStatus, setDirectStatus] = useState<BookingStatus>("PENDING");
+  const [directStatusNote, setDirectStatusNote] = useState("");
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<HallApplication | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadApplications = useCallback(async () => {
     setLoading(true);
@@ -100,6 +125,9 @@ export default function AdminApplicationsTab({
           hallId: hallFilter || undefined,
           eventType: eventTypeFilter || undefined,
           eventDate: dateFilter || undefined,
+          submittedDate: submittedDateFilter || undefined,
+          sortBy,
+          sortDir,
           page,
           size: 12,
         }),
@@ -117,17 +145,30 @@ export default function AdminApplicationsTab({
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, hallFilter, eventTypeFilter, dateFilter, page, onBanner]);
+  }, [
+    search,
+    statusFilter,
+    hallFilter,
+    eventTypeFilter,
+    dateFilter,
+    submittedDateFilter,
+    sortBy,
+    sortDir,
+    page,
+    onBanner,
+  ]);
 
   useEffect(() => {
     loadApplications();
-  }, [loadApplications, lastEventTick]);
+  }, [loadApplications, lastEventTick, refreshTick]);
 
   const openModal = (app: HallApplication) => {
     setSelected(app);
     setActionType(null);
     setComment("");
     setActionError(null);
+    setDirectStatus(app.status);
+    setDirectStatusNote("");
   };
 
   const handleEquipmentDecision = async (resId: number, approve: boolean) => {
@@ -197,6 +238,7 @@ export default function AdminApplicationsTab({
       }
 
       setSelected(updated);
+      setDirectStatus(updated.status);
       setActionType(null);
       setComment("");
       await loadApplications();
@@ -207,7 +249,74 @@ export default function AdminApplicationsTab({
     }
   };
 
+  const handleDirectStatusUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selected) return;
+    setActionError(null);
+    setBusy(true);
+    try {
+      const updated = await adminApplicationsApi.changeStatus(
+        selected.id,
+        directStatus,
+        directStatusNote.trim()
+      );
+      setSelected(updated);
+      setDirectStatusNote("");
+      onBanner({
+        type: "ok",
+        text: `Updated status of ${updated.applicationCode} to ${updated.status}.`,
+      });
+      await loadApplications();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Failed to update application status.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleQuickRowStatus = async (app: HallApplication, nextStatus: BookingStatus) => {
+    try {
+      const updated = await adminApplicationsApi.changeStatus(app.id, nextStatus);
+      onBanner({
+        type: "ok",
+        text: `Application ${updated.applicationCode} changed to ${updated.status}.`,
+      });
+      await loadApplications();
+    } catch (err) {
+      onBanner({
+        type: "err",
+        text: err instanceof ApiError ? err.message : "Failed to change application status.",
+      });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await adminApplicationsApi.delete(deleteTarget.id);
+      onBanner({
+        type: "ok",
+        text: `Deleted application ${deleteTarget.applicationCode}.`,
+      });
+      if (selected?.id === deleteTarget.id) {
+        setSelected(null);
+      }
+      setDeleteTarget(null);
+      await loadApplications();
+    } catch (err) {
+      onBanner({
+        type: "err",
+        text: err instanceof ApiError ? err.message : "Failed to delete application.",
+      });
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const kpis = [
+    { label: "Total Applications", value: stats?.totalApplications ?? 0, tone: "text-brand-700 bg-brand-50" },
     { label: "Pending Review", value: stats?.pendingCount ?? 0, tone: "text-amber-700 bg-amber-50" },
     { label: "Info Requested", value: stats?.underReviewCount ?? 0, tone: "text-indigo-700 bg-indigo-50" },
     { label: "Awaiting Payment", value: stats?.paymentPendingCount ?? 0, tone: "text-orange-700 bg-orange-50" },
@@ -223,10 +332,10 @@ export default function AdminApplicationsTab({
   return (
     <div className="space-y-5">
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
         {kpis.map((k) => (
-          <div key={k.label} className="card p-4">
-            <span className={`inline-block rounded-lg px-2 py-0.5 text-[11px] font-bold ${k.tone}`}>
+          <div key={k.label} className="card p-3.5">
+            <span className={`inline-block rounded-lg px-2 py-0.5 text-[10px] font-bold ${k.tone}`}>
               {k.label}
             </span>
             <p className="mt-2 text-2xl font-extrabold text-slate-900">{k.value}</p>
@@ -235,8 +344,8 @@ export default function AdminApplicationsTab({
       </div>
 
       {/* Search & Filters */}
-      <div className="card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
-        <div className="relative lg:col-span-2">
+      <div className="card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative sm:col-span-2">
           <Search
             size={16}
             className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -244,7 +353,7 @@ export default function AdminApplicationsTab({
           <input
             type="text"
             className="input pl-10"
-            placeholder="Search ID, event, applicant, phone..."
+            placeholder="Search ID, event, applicant name, email, phone..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -253,16 +362,21 @@ export default function AdminApplicationsTab({
           />
         </div>
 
-        <input
-          type="date"
+        <select
           className="input"
-          value={dateFilter}
+          value={statusFilter}
           onChange={(e) => {
-            setDateFilter(e.target.value);
+            setStatusFilter(e.target.value as BookingStatus | "");
             setPage(0);
           }}
-          title="Filter by event date"
-        />
+        >
+          <option value="">All Statuses</option>
+          {ALL_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
 
         <select
           className="input"
@@ -296,21 +410,58 @@ export default function AdminApplicationsTab({
           ))}
         </select>
 
-        <select
-          className="input"
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as BookingStatus | "");
-            setPage(0);
-          }}
-        >
-          <option value="">All Statuses</option>
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <div>
+          <input
+            type="date"
+            className="input"
+            value={dateFilter}
+            onChange={(e) => {
+              setDateFilter(e.target.value);
+              setPage(0);
+            }}
+            title="Filter by Event Date"
+            aria-label="Filter by Event Date"
+          />
+        </div>
+
+        <div>
+          <input
+            type="date"
+            className="input"
+            value={submittedDateFilter}
+            onChange={(e) => {
+              setSubmittedDateFilter(e.target.value);
+              setPage(0);
+            }}
+            title="Filter by Submission Date"
+            aria-label="Filter by Submission Date"
+          />
+        </div>
+
+        <div className="flex gap-1.5">
+          <select
+            className="input"
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(0);
+            }}
+          >
+            <option value="createdAt">Sort: Submission Date</option>
+            <option value="eventDate">Sort: Event Date</option>
+            <option value="eventName">Sort: Event Name</option>
+            <option value="applicantFirstName">Sort: Applicant</option>
+            <option value="status">Sort: Status</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+            className="btn-outline shrink-0 px-2.5 text-xs"
+            title="Toggle sort direction"
+          >
+            {sortDir === "asc" ? "↑" : "↓"}
+          </button>
+        </div>
       </div>
 
       {/* Applications Table */}
@@ -319,20 +470,20 @@ export default function AdminApplicationsTab({
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="px-5 py-3.5">Application ID</th>
-                <th className="px-5 py-3.5">Applicant</th>
-                <th className="px-5 py-3.5">Event &amp; Type</th>
-                <th className="px-5 py-3.5">Hall &amp; Schedule</th>
-                <th className="px-5 py-3.5">Fee</th>
-                <th className="px-5 py-3.5">Status</th>
-                <th className="px-5 py-3.5 text-right">Actions</th>
+                <th className="px-4 py-3.5">Application</th>
+                <th className="px-4 py-3.5">Applicant (Name, Email, Phone)</th>
+                <th className="px-4 py-3.5">Selected Event &amp; Hall</th>
+                <th className="px-4 py-3.5">Submitted</th>
+                <th className="px-4 py-3.5">Fee</th>
+                <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
-                    Loading hall applications...
+                    Loading applications...
                   </td>
                 </tr>
               ) : applications.length === 0 ? (
@@ -344,35 +495,39 @@ export default function AdminApplicationsTab({
               ) : (
                 applications.map((app) => (
                   <tr key={app.id} className="hover:bg-slate-50/80">
-                    <td className="whitespace-nowrap px-5 py-3.5">
+                    <td className="whitespace-nowrap px-4 py-3.5">
                       <span className="rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-800">
                         {app.applicationCode}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       <p className="font-semibold text-slate-900">
                         {app.applicantFirstName} {app.applicantLastName}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="flex items-center gap-1 text-xs text-slate-500">
+                        <Mail size={11} className="shrink-0" />
+                        <span>{app.applicantEmail || `${app.applicantUsername}@turin.uz`}</span>
+                      </p>
+                      <p className="font-mono text-[11px] text-slate-500">
                         @{app.applicantUsername} · {app.applicantPhoneNumber}
                       </p>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       <p className="font-semibold text-slate-900">{app.eventName}</p>
                       <p className="text-xs text-slate-500">
-                        {app.eventType} · {app.expectedParticipants} participants
+                        {app.eventType} · {app.hall.name}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {app.eventDate} ({app.startTime}–{app.endTime}) · {app.expectedParticipants} guests
                       </p>
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-xs text-slate-600">
-                      <p className="font-semibold text-slate-800">{app.hall.name}</p>
-                      <p>
-                        {app.eventDate} ({app.startTime}–{app.endTime})
-                      </p>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-slate-500">
+                      {formatDate(app.createdAt)}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 font-bold text-slate-900">
+                    <td className="whitespace-nowrap px-4 py-3.5 font-bold text-slate-900">
                       ${app.requiredAmount ?? "—"}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3.5">
                       <div className="flex flex-col items-start gap-1">
                         <BookingStatusBadge status={app.status} />
                         {app.receiptUrl && app.status === "PAYMENT_UNDER_REVIEW" && (
@@ -382,14 +537,44 @@ export default function AdminApplicationsTab({
                         )}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openModal(app)}
-                        className="btn-outline px-3 py-1.5 text-xs"
-                      >
-                        <Eye size={14} /> Review
-                      </button>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        {(app.status === "PENDING" || app.status === "UNDER_REVIEW") && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickRowStatus(app, "APPROVED")}
+                              className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
+                              title="Quick Approve"
+                            >
+                              <ThumbsUp size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickRowStatus(app, "REJECTED")}
+                              className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
+                              title="Quick Reject"
+                            >
+                              <ThumbsDown size={15} />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openModal(app)}
+                          className="btn-outline px-2.5 py-1.5 text-xs"
+                        >
+                          <Eye size={14} /> Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(app)}
+                          className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
+                          title="Delete application"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -446,7 +631,8 @@ export default function AdminApplicationsTab({
                   <strong>
                     {selected.applicantFirstName} {selected.applicantLastName}
                   </strong>{" "}
-                  (@{selected.applicantUsername} · {selected.applicantPhoneNumber})
+                  (@{selected.applicantUsername} · {selected.applicantEmail || "no email"} ·{" "}
+                  {selected.applicantPhoneNumber})
                 </p>
               </div>
               <button
@@ -564,14 +750,14 @@ export default function AdminApplicationsTab({
               </div>
             )}
 
-            {/* Admin Actions */}
+            {/* Workflow Decisions */}
             {(selected.status === "PENDING" ||
               selected.status === "UNDER_REVIEW" ||
               selected.status === "PAYMENT_UNDER_REVIEW" ||
               selected.status === "CONFIRMED") && (
               <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Administrator Decisions
+                  Administrator Workflow Decisions
                 </p>
 
                 {actionError && (
@@ -591,7 +777,7 @@ export default function AdminApplicationsTab({
                         }}
                         className="btn-primary text-xs"
                       >
-                        <ThumbsUp size={15} /> Approve Application
+                        <ThumbsUp size={15} /> Approve (24h Hold)
                       </button>
                       <button
                         type="button"
@@ -701,6 +887,50 @@ export default function AdminApplicationsTab({
               </div>
             )}
 
+            {/* Direct Status Management & Delete */}
+            <form
+              onSubmit={handleDirectStatusUpdate}
+              className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Change Application Status Directly
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(selected)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                >
+                  <Trash2 size={13} /> Delete Application
+                </button>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <select
+                  className="input text-xs"
+                  value={directStatus}
+                  onChange={(e) => setDirectStatus(e.target.value as BookingStatus)}
+                >
+                  {DIRECT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label} ({opt.value})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="input text-xs sm:col-span-2"
+                  placeholder="Optional admin note for status change..."
+                  value={directStatusNote}
+                  onChange={(e) => setDirectStatusNote(e.target.value)}
+                />
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button type="submit" disabled={busy} className="btn-outline px-3.5 py-1.5 text-xs">
+                  {busy ? "Updating..." : "Update Status"}
+                </button>
+              </div>
+            </form>
+
             {/* Complete Admin Action History */}
             <div className="mt-5 border-t border-slate-100 pt-4">
               <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -724,6 +954,21 @@ export default function AdminApplicationsTab({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Application?"
+        description={
+          deleteTarget
+            ? `Are you sure you want to permanently delete application ${deleteTarget.applicationCode} ("${deleteTarget.eventName}")? Equipment reservations, action history, and receipt files linked to this application will be removed.`
+            : ""
+        }
+        confirmLabel="Delete Application"
+        busy={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

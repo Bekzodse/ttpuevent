@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -50,6 +51,7 @@ public class HallApplicationService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final BookingPdfService bookingPdfService;
+    private final AdminActivityLogService activityLogService;
 
     @Value("${app.payment.bank-card-number:8600 1204 8899 4421}")
     private String bankCardNumber;
@@ -144,6 +146,7 @@ public class HallApplicationService {
                 .applicantFirstName(applicant.getFirstName())
                 .applicantLastName(applicant.getLastName())
                 .applicantPhoneNumber(applicant.getPhoneNumber())
+                .applicantEmail(applicant.getEmail())
                 .hall(hall)
                 .eventName(request.getEventName().trim())
                 .eventType(request.getEventType().trim())
@@ -379,15 +382,23 @@ public class HallApplicationService {
             Long hallId,
             String eventType,
             LocalDate eventDate,
+            LocalDate submittedDate,
+            String sortBy,
+            String sortDir,
             int page,
             int size) {
 
         expireOverdueReservations();
 
+        String safeSort = switch (sortBy != null ? sortBy : "createdAt") {
+            case "eventDate", "eventName", "status", "requiredAmount", "applicantFirstName" -> sortBy;
+            default -> "createdAt";
+        };
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(
                 Math.max(0, page),
                 Math.min(Math.max(1, size), 100),
-                Sort.by(Sort.Direction.DESC, "createdAt")
+                Sort.by(direction, safeSort)
         );
 
         Specification<HallApplication> spec = (root, query, cb) -> {
@@ -400,6 +411,8 @@ public class HallApplicationService {
                         cb.like(cb.lower(root.get("applicantFirstName")), pattern),
                         cb.like(cb.lower(root.get("applicantLastName")), pattern),
                         cb.like(cb.lower(root.get("applicantPhoneNumber")), pattern),
+                        cb.like(cb.lower(cb.coalesce(root.get("applicantEmail"), "")), pattern),
+                        cb.like(cb.lower(cb.coalesce(root.get("applicant").get("email"), "")), pattern),
                         cb.like(cb.lower(root.get("applicant").get("username")), pattern)
                 ));
             }
@@ -414,6 +427,12 @@ public class HallApplicationService {
             }
             if (eventDate != null) {
                 predicates.add(cb.equal(root.get("eventDate"), eventDate));
+            }
+            if (submittedDate != null) {
+                Instant dayStart = submittedDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+                Instant dayEnd = submittedDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), dayStart));
+                predicates.add(cb.lessThan(root.get("createdAt"), dayEnd));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -472,6 +491,9 @@ public class HallApplicationService {
                 saved
         );
 
+        activityLogService.log(admin, "APPLICATION_APPROVED", "APPLICATION", saved.getId(), saved.getApplicationCode(),
+                "Approved application " + saved.getApplicationCode() + " for '" + saved.getEventName() + "' ($" + totalAmount + ")");
+
         return toDtoWithHistory(saved);
     }
 
@@ -499,6 +521,9 @@ public class HallApplicationService {
                 saved
         );
 
+        activityLogService.log(admin, "APPLICATION_REJECTED", "APPLICATION", saved.getId(), saved.getApplicationCode(),
+                "Rejected application " + saved.getApplicationCode() + " for '" + saved.getEventName() + "': " + reason.trim());
+
         return toDtoWithHistory(saved);
     }
 
@@ -524,6 +549,9 @@ public class HallApplicationService {
                 "WARNING",
                 saved
         );
+
+        activityLogService.log(admin, "APPLICATION_INFO_REQUESTED", "APPLICATION", saved.getId(), saved.getApplicationCode(),
+                "Requested additional info for " + saved.getApplicationCode() + ": " + message.trim());
 
         return toDtoWithHistory(saved);
     }
@@ -583,6 +611,9 @@ public class HallApplicationService {
                 saved
         );
 
+        activityLogService.log(admin, "PAYMENT_APPROVED", "APPLICATION", saved.getId(), saved.getApplicationCode(),
+                "Verified payment and confirmed booking " + saved.getApplicationCode() + " ($" + saved.getRequiredAmount() + ")");
+
         return toDtoWithHistory(saved);
     }
 
@@ -621,7 +652,96 @@ public class HallApplicationService {
                 saved
         );
 
+        activityLogService.log(admin, "PAYMENT_REJECTED", "APPLICATION", saved.getId(), saved.getApplicationCode(),
+                "Rejected payment for " + saved.getApplicationCode() + ": " + reason.trim());
+
         return toDtoWithHistory(saved);
+    }
+
+    @Transactional
+    public HallApplicationDto changeApplicationStatus(
+            Long appId, User admin, BookingStatus targetStatus, String comment) {
+        HallApplication app = findWithDetails(appId);
+        BookingStatus prev = app.getStatus();
+        Instant now = Instant.now();
+
+        if (targetStatus == BookingStatus.APPROVED
+                || targetStatus == BookingStatus.PAYMENT_PENDING
+                || targetStatus == BookingStatus.CONFIRMED) {
+            EventHall hall = hallRepository.findByIdForUpdate(app.getHall().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Event hall not found."));
+            checkHallConflicts(hall, app.getEventDate(), app.getStartTime(), app.getEndTime(), app.getId(), now);
+
+            if (app.getRequiredAmount() == null) {
+                BigDecimal hallFee = calculateFee(hall.getHourlyRate(), app.getStartTime(), app.getEndTime());
+                BigDecimal eqFee = calculateApprovedOrPendingEquipmentFee(app.getId());
+                app.setRequiredAmount(hallFee.add(eqFee).setScale(2, RoundingMode.HALF_UP));
+            }
+            if (targetStatus == BookingStatus.APPROVED || targetStatus == BookingStatus.PAYMENT_PENDING) {
+                if (app.getApprovedAt() == null) app.setApprovedAt(now);
+                if (app.getPaymentDeadline() == null) app.setPaymentDeadline(now.plus(reservationHours, ChronoUnit.HOURS));
+                if (app.getBankCardNumber() == null) app.setBankCardNumber(bankCardNumber);
+                if (app.getBankCardHolder() == null) app.setBankCardHolder(bankCardHolder);
+                if (app.getBankName() == null) app.setBankName(bankName);
+            }
+            if (targetStatus == BookingStatus.CONFIRMED) {
+                if (app.getConfirmedAt() == null) app.setConfirmedAt(now);
+                app.setPaymentStatus(BookingStatus.PAYMENT_APPROVED);
+                if (app.getVerifiedByAdmin() == null) {
+                    app.setVerifiedByAdmin(fullName(admin) + " (@" + admin.getUsername() + ")");
+                }
+            }
+        } else if (targetStatus == BookingStatus.REJECTED || targetStatus == BookingStatus.CANCELLED) {
+            releaseEquipment(app.getId());
+        }
+
+        app.setStatus(targetStatus);
+        if (comment != null && !comment.isBlank()) {
+            app.setAdminComment(comment.trim());
+        }
+        HallApplication saved = applicationRepository.save(app);
+
+        String note = comment != null && !comment.isBlank()
+                ? comment.trim()
+                : "Status updated from " + prev + " to " + targetStatus + " by administrator.";
+
+        recordHistory(saved, admin.getUsername(), fullName(admin), "ADMIN",
+                "STATUS_UPDATED", prev, targetStatus, note);
+
+        String notifType = switch (targetStatus) {
+            case APPROVED, CONFIRMED, PAYMENT_APPROVED -> "SUCCESS";
+            case REJECTED, PAYMENT_REJECTED, EXPIRED -> "ERROR";
+            case CANCELLED, UNDER_REVIEW -> "WARNING";
+            default -> "INFO";
+        };
+        notificationService.notifyUser(
+                saved.getApplicant(),
+                "Application Status Updated (" + saved.getApplicationCode() + ")",
+                "Your application for '" + saved.getEventName() + "' is now " + targetStatus + ". " + note,
+                notifType,
+                saved
+        );
+
+        activityLogService.log(admin, "APPLICATION_STATUS_CHANGED", "APPLICATION", saved.getId(), saved.getApplicationCode(),
+                "Changed status of " + saved.getApplicationCode() + " from " + prev + " to " + targetStatus);
+
+        return toDtoWithHistory(saved);
+    }
+
+    @Transactional
+    public void deleteApplication(Long appId, User admin) {
+        HallApplication app = findWithDetails(appId);
+        String code = app.getApplicationCode();
+        String eventName = app.getEventName();
+
+        cancellationRequestRepository.deleteByApplicationIdIn(List.of(appId));
+        equipmentReservationRepository.deleteByApplicationIdIn(List.of(appId));
+        historyRepository.deleteByApplicationIdIn(List.of(appId));
+        fileStorageService.deleteReceipt(app.getReceiptFilename());
+        applicationRepository.delete(app);
+
+        activityLogService.log(admin, "APPLICATION_DELETED", "APPLICATION", appId, code,
+                "Deleted hall application " + code + " ('" + eventName + "')");
     }
 
     @Transactional

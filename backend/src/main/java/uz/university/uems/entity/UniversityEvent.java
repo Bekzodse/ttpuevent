@@ -55,6 +55,13 @@ public class UniversityEvent {
     @Builder.Default
     private String status = "Upcoming";
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean published = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

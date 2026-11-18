@@ -1,5 +1,6 @@
 package uz.university.uems.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +18,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Complete hall booking application details including payment, equipment, cancellation, and audit history")
 public class HallApplicationDto {
     private Long id;
     private String applicationCode;
@@ -25,6 +27,7 @@ public class HallApplicationDto {
     private String applicantFirstName;
     private String applicantLastName;
     private String applicantPhoneNumber;
+    private String applicantEmail;
     private EventHallDto hall;
     private String eventName;
     private String eventType;
@@ -72,6 +75,9 @@ public class HallApplicationDto {
                 .applicantFirstName(app.getApplicantFirstName())
                 .applicantLastName(app.getApplicantLastName())
                 .applicantPhoneNumber(app.getApplicantPhoneNumber())
+                .applicantEmail(app.getApplicantEmail() != null && !app.getApplicantEmail().isBlank()
+                        ? app.getApplicantEmail()
+                        : app.getApplicant().getEmail())
                 .hall(EventHallDto.from(app.getHall()))
                 .eventName(app.getEventName())
                 .eventType(app.getEventType())
