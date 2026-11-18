@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { useI18n } from "@/components/I18nProvider";
 import { useThemeAndBranding } from "@/components/ThemeAndBrandingProvider";
-import { eventsApi, hallsApi } from "@/lib/api";
+import { eventsApi, hallsApi, resolveEventImageUrl } from "@/lib/api";
 import { EventHall, UniversityEvent } from "@/lib/types";
 
 export default function HomePage() {
@@ -31,7 +31,7 @@ export default function HomePage() {
   useEffect(() => {
     eventsApi
       .list()
-      .then((data) => setEvents(data.filter((e) => e.status === "Upcoming").slice(0, 3)))
+      .then((data) => setEvents(data.filter((e) => e.status === "Upcoming").slice(0, 6)))
       .catch(() => setEvents([]))
       .finally(() => setLoadingEvents(false));
     hallsApi
@@ -259,14 +259,22 @@ export default function HomePage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((e) => {
               const pct = Math.min(Math.round((e.registered / e.capacity) * 100), 100);
+              const imgSrc = resolveEventImageUrl(e.imageUrl);
               return (
                 <Link
                   key={e.id}
                   href={`/events/${e.id}`}
                   className="card group flex flex-col overflow-hidden transition hover:-translate-y-1"
                 >
-                  <div className={`relative h-28 bg-gradient-to-br ${e.gradient}`}>
-                    <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                  <div className={`relative h-36 overflow-hidden bg-gradient-to-br ${e.gradient}`}>
+                    {imgSrc && (
+                      <img
+                        src={imgSrc}
+                        alt={e.title}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      />
+                    )}
+                    <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
                       {e.category}
                     </span>
                   </div>
