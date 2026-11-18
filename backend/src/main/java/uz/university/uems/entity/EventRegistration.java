@@ -31,6 +31,24 @@ public class EventRegistration {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "full_name", length = 160)
+    private String fullName;
+
+    @Column(name = "phone_number", length = 30)
+    private String phoneNumber;
+
+    @Column(name = "email", length = 160)
+    private String email;
+
+    @Column(name = "department", length = 120)
+    private String department;
+
+    @Column(name = "student_code", length = 60)
+    private String studentCode;
+
+    @Column(name = "notes", length = 500)
+    private String notes;
+
     @Column(name = "registered_at", nullable = false, updatable = false)
     private Instant registeredAt;
 

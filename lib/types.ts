@@ -378,11 +378,14 @@ export interface EventRegistrant {
   registrationId: number;
   userId: number;
   username: string;
+  fullName?: string;
   firstName: string;
   lastName: string;
   email: string | null;
   phoneNumber: string;
   department: string | null;
+  studentCode?: string | null;
+  notes?: string | null;
   registeredAt: string;
 }
 

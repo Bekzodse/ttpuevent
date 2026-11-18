@@ -912,8 +912,25 @@ export const eventsApi = {
       },
       true
     ),
-  register: (id: string | number) =>
-    request<UniversityEvent>(`/api/events/${id}/register`, { method: "POST" }, true),
+  register: (
+    id: string | number,
+    data?: {
+      fullName: string;
+      phoneNumber: string;
+      email?: string;
+      department?: string;
+      studentCode?: string;
+      notes?: string;
+    }
+  ) =>
+    request<UniversityEvent>(
+      `/api/events/${id}/register`,
+      {
+        method: "POST",
+        body: data ? JSON.stringify(data) : undefined,
+      },
+      true
+    ),
   unregister: (id: string | number) =>
     request<UniversityEvent>(`/api/events/${id}/register`, { method: "DELETE" }, true),
 };

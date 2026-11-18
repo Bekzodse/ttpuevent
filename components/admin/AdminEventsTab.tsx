@@ -969,9 +969,17 @@ export default function AdminEventsTab({
                       <tr key={r.registrationId}>
                         <td className="px-3 py-2.5">
                           <p className="font-bold text-slate-900">
-                            {r.firstName} {r.lastName}
+                            {r.fullName || `${r.firstName} ${r.lastName}`}
                           </p>
-                          <p className="text-slate-500">@{r.username}</p>
+                          <p className="text-slate-500">
+                            @{r.username}
+                            {r.studentCode ? ` · ${r.studentCode}` : ""}
+                          </p>
+                          {r.notes && (
+                            <p className="mt-0.5 text-[11px] italic text-slate-500">
+                              &ldquo;{r.notes}&rdquo;
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2.5">
                           <p className="text-slate-700">{r.email || "—"}</p>

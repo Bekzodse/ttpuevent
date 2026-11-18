@@ -193,16 +193,28 @@ class AdminEnhancementsIntegrationTest {
         String imageUrl = objectMapper.readTree(uploadRes.getResponse().getContentAsString()).get("imageUrl").asText();
         mockMvc.perform(get(imageUrl)).andExpect(status().isOk());
 
-        // 3. Student registers for the published event
+        // 3. Student registers for the published event with student details
         mockMvc.perform(post("/api/events/" + eventId + "/register")
-                        .header("Authorization", "Bearer " + studentToken))
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "fullName", "Malika Yusupova",
+                                "phoneNumber", "+998901234567",
+                                "email", "malika@turin.uz",
+                                "department", "Computer Science",
+                                "studentCode", "U221045",
+                                "notes", "Looking forward to attending!"
+                        ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.registered").value(1));
 
-        // Admin views event registrants
+        // Admin views event registrants with submitted details
         mockMvc.perform(get("/api/admin/events/" + eventId + "/registrations")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fullName").value("Malika Yusupova"))
+                .andExpect(jsonPath("$[0].studentCode").value("U221045"))
+                .andExpect(jsonPath("$[0].notes").value("Looking forward to attending!"))
                 .andExpect(jsonPath("$[0].email").value("malika@turin.uz"));
 
         // 4. Admin edits event

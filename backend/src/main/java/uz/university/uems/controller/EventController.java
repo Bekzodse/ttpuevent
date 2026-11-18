@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import uz.university.uems.dto.CreateEventRequest;
 import uz.university.uems.dto.ErrorResponse;
 import uz.university.uems.dto.EventDto;
+import uz.university.uems.dto.EventRegistrationRequest;
 import uz.university.uems.security.UserPrincipal;
 import uz.university.uems.service.EventService;
 
@@ -78,19 +79,20 @@ public class EventController {
 
     @Operation(
             summary = "Register for a campus event",
-            description = "Requires authentication (USER or ADMIN). Fails if unpublished, cancelled, completed, full, or already registered.",
+            description = "Requires authentication (USER or ADMIN). Collects optional student registration details (fullName, phoneNumber, email, department, studentCode, notes) and registers the user.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Registered successfully", content = @Content(schema = @Schema(implementation = EventDto.class))),
-            @ApiResponse(responseCode = "400", description = "Event closed or capacity full", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error, event closed, or capacity full", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "Already registered", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/{id}/register")
     public ResponseEntity<EventDto> registerForEvent(
             @Parameter(description = "Event ID", example = "1") @PathVariable Long id,
-            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(eventService.registerForEvent(id, principal.getId()));
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody(required = false) EventRegistrationRequest request) {
+        return ResponseEntity.ok(eventService.registerForEvent(id, principal.getId(), request));
     }
 
     @Operation(

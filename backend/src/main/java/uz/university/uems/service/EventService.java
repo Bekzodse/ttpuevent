@@ -322,6 +322,11 @@ public class EventService {
 
     @Transactional
     public EventDto registerForEvent(Long eventId, Long userId) {
+        return registerForEvent(eventId, userId, null);
+    }
+
+    @Transactional
+    public EventDto registerForEvent(Long eventId, Long userId, EventRegistrationRequest request) {
         UniversityEvent event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
         User user = userRepository.findById(userId)
@@ -343,9 +348,30 @@ public class EventService {
             throw new BadRequestException("No seats remaining for this event.");
         }
 
+        String fullName = request != null && request.getFullName() != null && !request.getFullName().isBlank()
+                ? request.getFullName().trim()
+                : (user.getFirstName() + " " + user.getLastName()).trim();
+        String phone = request != null && request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()
+                ? InputNormalizer.normalizePhone(request.getPhoneNumber())
+                : user.getPhoneNumber();
+        String email = request != null && request.getEmail() != null && !request.getEmail().isBlank()
+                ? request.getEmail().trim().toLowerCase()
+                : user.getEmail();
+        String department = request != null && request.getDepartment() != null && !request.getDepartment().isBlank()
+                ? request.getDepartment().trim()
+                : user.getDepartment();
+        String studentCode = request != null ? trimOrNull(request.getStudentCode()) : null;
+        String notes = request != null ? trimOrNull(request.getNotes()) : null;
+
         registrationRepository.save(EventRegistration.builder()
                 .event(event)
                 .user(user)
+                .fullName(fullName)
+                .phoneNumber(phone)
+                .email(email)
+                .department(department)
+                .studentCode(studentCode)
+                .notes(notes)
                 .build());
         event.setRegisteredCount(event.getRegisteredCount() + 1);
         return EventDto.from(eventRepository.save(event), true);
